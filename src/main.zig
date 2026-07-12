@@ -2006,9 +2006,9 @@ fn attach(daemon: *Daemon) !void {
         _ = cross.c.tcsetattr(posix.STDIN_FILENO, cross.c.TCSANOW, &raw_termios);
     }
 
-    // Clear screen before attaching. This provides a clean slate before
+    // Reset terminal before attaching. This provides a clean slate before
     // the session restore.
-    const clear_seq = "\x1b[2J\x1b[H";
+    const clear_seq = "\x1bc";
     _ = try posix.write(posix.STDOUT_FILENO, clear_seq);
 
     const looper = try clientLoop(client_sock);
