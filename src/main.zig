@@ -833,14 +833,7 @@ const Daemon = struct {
         var buf: [256]u8 = undefined;
         const z = try std.fmt.bufPrintZ(&buf, "{s}", .{self.shell});
         const shell: [:0]const u8 = if (self.is_task_mode) "bash" else z;
-        // Use "-shellname" as argv[0] to signal login shell (traditional method)
-        const login_shell = try std.fmt.allocPrintSentinel(
-            alloc,
-            "-{s}",
-            .{std.fs.path.basename(shell)},
-            0,
-        );
-        const argv = [_:null]?[*:0]const u8{ login_shell, null };
+        const argv = [_:null]?[*:0]const u8{ shell, null };
         const err = lib_posix.execvpeZ(shell, &argv, std.c.environ);
         std.log.err("execvpe failed: shell={s} err={s}", .{ shell, @errorName(err) });
         lib_posix.exit(1);
