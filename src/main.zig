@@ -683,14 +683,7 @@ const Daemon = struct {
         }
 
         const shell: [:0]const u8 = if (self.is_task_mode) "bash" else util.detectShell();
-        // Use "-shellname" as argv[0] to signal login shell (traditional method)
-        const login_shell = try std.fmt.allocPrintSentinel(
-            alloc,
-            "-{s}",
-            .{std.fs.path.basename(shell)},
-            0,
-        );
-        const argv = [_:null]?[*:0]const u8{ login_shell, null };
+        const argv = [_:null]?[*:0]const u8{ shell, null };
         const err = std.posix.execvpeZ(shell, &argv, std.c.environ);
         std.log.err("execvpe failed: shell={s} err={s}", .{ shell, @errorName(err) });
         std.posix.exit(1);
