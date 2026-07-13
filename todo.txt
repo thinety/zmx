@@ -1,0 +1,26 @@
+no-login-shell:
+    https://github.com/neurosnap/zmx/issues/41
+    https://github.com/neurosnap/zmx/issues/45
+    reverts https://github.com/neurosnap/zmx/commit/370157cefcd90e0e53f29b9c1b9885c778820d06
+
+restore-state-fix:
+    completely fixes https://github.com/neurosnap/zmx/issues/31
+    reverts https://github.com/neurosnap/zmx/pull/98
+
+simplify-osc133-handling:
+    https://github.com/neurosnap/zmx/issues/99
+    https://github.com/neurosnap/zmx/issues/111
+    https://github.com/neurosnap/zmx/pull/112
+
+    - SIGWINCH even if dimensions don't change
+        - look into ghostty's mechanism to make the kernel raise SIGWINCH
+    - use the smallest size out of all connected terminals
+    - remove external leader terminal (the leader is conceptually the internal vt state)
+        - filter escape sequences that would require response from the terminal
+            (so in a sense all attached terminals are just dumb views)
+        - implement such filter by using custom Handler with Stream
+
+- fix ctrl-l
+    - formatter needs to output blank trailing lines
+        - also take a look at cursor style when changing ghostty-vt
+    - why do tabstops break the terminal?
