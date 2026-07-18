@@ -10,6 +10,7 @@ const cross = @import("cross.zig");
 const socket = @import("socket.zig");
 const label = @import("label.zig");
 const lib_posix = @import("posix.zig");
+const stream = @import("stream.zig");
 
 pub const version = build_options.version;
 pub const ghostty_version = build_options.ghostty_version;
@@ -1104,7 +1105,11 @@ const Daemon = struct {
                 "cursor before serialize: x={d} y={d} pending_wrap={}",
                 .{ cursor.x, cursor.y, cursor.pending_wrap },
             );
-            if (util.serializeTerminalState(self.alloc, term)) |term_output| {
+            const output = util.serializeTerminalState(self.alloc, term) catch |err| null: {
+                std.log.warn("failed to format terminal state err={s}", .{@errorName(err)});
+                break :null null;
+            };
+            if (output) |term_output| {
                 std.log.debug("serialize terminal state", .{});
                 defer self.alloc.free(term_output);
                 ipc.appendMessage(self.alloc, &client.write_buf, .Output, term_output) catch |err| {
@@ -2848,7 +2853,8 @@ fn daemonLoop(daemon: *Daemon, server_sock_fd: i32, pty_fd: i32) !void {
         .max_scrollback = daemon.cfg.max_scrollback,
     });
     defer term.deinit(daemon.alloc);
-    var vt_stream = term.vtStream();
+    var vt_stream = ghostty_vt.Stream(stream.Handler)
+        .initAlloc(daemon.alloc, .init(&term));
     defer vt_stream.deinit();
 
     // Carries the tail of the previous PTY read so the task-exit marker
