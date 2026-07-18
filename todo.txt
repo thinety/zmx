@@ -13,14 +13,16 @@ simplify-osc133-handling:
     https://github.com/neurosnap/zmx/pull/112
 
     - SIGWINCH even if dimensions don't change
-        - look into ghostty's mechanism to make the kernel raise SIGWINCH
+        - we can just update ws_xpixel and ws_ypixel
     - use the smallest size out of all connected terminals
     - remove external leader terminal (the leader is conceptually the internal vt state)
         - filter escape sequences that would require response from the terminal
             (so in a sense all attached terminals are just dumb views)
         - implement such filter by using custom Handler with Stream
+            - basically the code in `stream_terminal.zig:1#882`
 
 - fix ctrl-l
     - formatter needs to output blank trailing lines
         - also take a look at cursor style when changing ghostty-vt
     - why do tabstops break the terminal?
+    - basically reimplementation of the code in `formatter.zig:1#1589`

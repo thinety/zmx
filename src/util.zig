@@ -3,6 +3,7 @@ const posix = std.posix;
 const ghostty_vt = @import("ghostty-vt");
 const ipc = @import("ipc.zig");
 const socket = @import("socket.zig");
+const formatter = @import("formatter.zig");
 const testing = std.testing;
 
 pub const SessionEntry = struct {
@@ -372,49 +373,31 @@ pub fn isUserInput(payload: []const u8) bool {
     return false;
 }
 
-pub fn serializeTerminalState(alloc: std.mem.Allocator, term: *ghostty_vt.Terminal) ?[]const u8 {
-    var builder: std.Io.Writer.Allocating = .init(alloc);
-    defer builder.deinit();
+pub fn serializeTerminalState(alloc: std.mem.Allocator, term: *ghostty_vt.Terminal) !?[]const u8 {
+    var allocating: std.Io.Writer.Allocating = .init(alloc);
+    defer allocating.deinit();
 
-    // Synchronized output (DECSET 2026) is a transient rendering handshake
-    // between a program and its current terminal client. Replaying it to a
-    // newly attached client can leave that client deferring renders until its
-    // local timeout fires, so temporarily exclude it from restored state and
-    // restore the original mode before returning.
-    const had_synchronized_output = term.modes.get(.synchronized_output);
-    if (had_synchronized_output) {
-        term.modes.set(.synchronized_output, false);
-    }
+    // // Synchronized output (DECSET 2026) is a transient rendering handshake
+    // // between a program and its current terminal client. Replaying it to a
+    // // newly attached client can leave that client deferring renders until its
+    // // local timeout fires, so temporarily exclude it from restored state and
+    // // restore the original mode before returning.
+    // const had_synchronized_output = term.modes.get(.synchronized_output);
+    // if (had_synchronized_output) {
+    //     term.modes.set(.synchronized_output, false);
+    // }
 
-    var term_formatter = ghostty_vt.formatter.TerminalFormatter.init(term, .vt);
-    term_formatter.content = .{ .selection = null };
-    term_formatter.extra = .{
-        .palette = false,
-        .modes = true,
-        .scrolling_region = true,
-        .tabstops = false, // tabstop restoration moves cursor after CUP, corrupting position
-        .pwd = true,
-        .keyboard = true,
-        .screen = .all,
-    };
+    var term_formatter = formatter.TerminalFormatter.init(term);
+    try term_formatter.format(&allocating.writer);
 
-    term_formatter.format(&builder.writer) catch |err| {
-        std.log.warn("failed to format terminal state err={s}", .{@errorName(err)});
-        return null;
-    };
+    // // Restore the original synchronized_output mode before returning
+    // if (had_synchronized_output) {
+    //     term.modes.set(.synchronized_output, true);
+    // }
 
-    const output = builder.writer.buffered();
+    const output = allocating.writer.buffered();
     if (output.len == 0) return null;
-
-    // Restore the original synchronized_output mode before returning
-    if (had_synchronized_output) {
-        term.modes.set(.synchronized_output, true);
-    }
-
-    return alloc.dupe(u8, output) catch |err| {
-        std.log.warn("failed to allocate terminal state err={s}", .{@errorName(err)});
-        return null;
-    };
+    return try alloc.dupe(u8, output);
 }
 
 pub const HistoryFormat = enum(u8) {
