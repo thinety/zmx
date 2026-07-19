@@ -26,3 +26,10 @@ simplify-osc133-handling:
         - also take a look at cursor style when changing ghostty-vt
     - why do tabstops break the terminal?
     - basically reimplementation of the code in `formatter.zig:1#1589`
+
+
+fish:
+    bugs:
+    - clear screen (Ctrl-L) with a full screen prints an extra prompt line in the scrollback history
+        * only happens if prompt is longer than a single line
+        * does not depend on even or odd number of terminal lines

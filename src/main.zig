@@ -1145,6 +1145,7 @@ const Daemon = struct {
 
     pub fn handleOutput(self: *Daemon, payload: []const u8, vt_stream: anytype) !void {
         vt_stream.nextSlice(payload);
+        std.log.debug("pty handleOutput data={x}", .{payload});
         self.has_pty_output = true;
         for (self.clients.items) |client| {
             try ipc.appendMessage(self.alloc, &client.write_buf, .Output, payload);
@@ -2573,6 +2574,7 @@ fn daemonLoop(daemon: *Daemon, server_sock_fd: i32, pty_fd: i32) !void {
                 } else {
                     // Feed PTY output to terminal emulator for state tracking
                     vt_stream.nextSlice(buf[0..n]);
+                    std.log.debug("pty output data={x}", .{buf[0..n]});
                     daemon.has_pty_output = true;
 
                     // When no real terminal client has attached yet, respond to

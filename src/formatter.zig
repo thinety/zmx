@@ -229,10 +229,9 @@ fn formatPageList(
 }
 
 const TrailingState = struct {
-    rows: usize,
     cells: usize,
 
-    const empty: TrailingState = .{ .rows = 0, .cells = 0 };
+    const empty: TrailingState = .{ .cells = 0 };
 };
 
 fn formatPage(
@@ -260,7 +259,6 @@ fn formatPage(
     trailing_state: TrailingState,
     writer: *std.Io.Writer,
 ) std.Io.Writer.Error!TrailingState {
-    var blank_rows: usize = 0;
     var blank_cells: usize = 0;
 
     // Continue our prior trailing state if we have it, but only if we're
@@ -268,21 +266,20 @@ fn formatPage(
     // If a non-zero start position is specified, ignore trailing state.
     {
         if (start_y == 0 and start_x == 0) {
-            blank_rows = trailing_state.rows;
             blank_cells = trailing_state.cells;
         }
     }
 
     // Setup our starting column and perform some validation for overflows.
     // Note: start_x only applies to the first row, end_x only applies to the last row.
-    if (start_x >= page.size.cols) return .{ .rows = blank_rows, .cells = blank_cells };
+    if (start_x >= page.size.cols) return .{ .cells = blank_cells };
     const end_x_unclamped: size.CellCountInt = end_x_ orelse page.size.cols - 1;
     var end_x = @min(end_x_unclamped, page.size.cols - 1);
 
     // Setup our starting row and perform some validation for overflows.
-    if (start_y >= page.size.rows) return .{ .rows = blank_rows, .cells = blank_cells };
+    if (start_y >= page.size.rows) return .{ .cells = blank_cells };
     const end_y_unclamped: size.CellCountInt = end_y_ orelse page.size.rows - 1;
-    if (start_y > end_y_unclamped) return .{ .rows = blank_rows, .cells = blank_cells };
+    if (start_y > end_y_unclamped) return .{ .cells = blank_cells };
     var end_y = @min(end_y_unclamped, page.size.rows - 1);
 
     // Edge case: if our end x/y falls on a spacer head AND we're unwrapping,
@@ -309,7 +306,7 @@ fn formatPage(
 
     // If we only have a single row, validate that start_x <= end_x
     if (start_y == end_y and start_x > end_x) {
-        return .{ .rows = blank_rows, .cells = blank_cells };
+        return .{ .cells = blank_cells };
     }
 
     {
@@ -366,15 +363,14 @@ fn formatPage(
             break :cells_subset subset;
         };
 
-        // If this row is blank, accumulate to avoid a bunch of extra
-        // work later. If it isn't blank, make sure we dump all our
-        // blanks.
-        if (!Cell.hasTextAny(cells_subset)) {
-            blank_rows += 1;
-            continue;
+        if (!row.wrap_continuation) {
+            // This row doesn't continue a wrap, so we need to reset
+            // our blank cell count.
+            blank_cells = 0;
         }
 
-        if (blank_rows > 0) {
+        // Add a newline if not the first row and not continuing a wrap.
+        if (y_usize > start_y and !row.wrap_continuation) {
             // Reset style before emitting newlines to prevent background
             // colors from bleeding into the next line's leading cells.
             if (!style.default()) {
@@ -385,20 +381,8 @@ fn formatPage(
             // VT uses \r\n because in a raw pty, \n alone doesn't
             // guarantee moving the cursor back to column 0. \r
             // makes it work for sure.
-            const sequence = "\r\n";
-
-            for (0..blank_rows) |_| try writer.writeAll(sequence);
-
-            blank_rows = 0;
+            try writer.writeAll("\r\n");
         }
-
-        // If we're not wrapped, we always add a newline so after
-        // the row is printed we can add a newline.
-        if (!row.wrap) blank_rows += 1;
-
-        // If the row doesn't continue a wrap then we need to reset
-        // our blank cell count.
-        if (!row.wrap_continuation) blank_cells = 0;
 
         // Go through each cell and print it
         for (cells_subset) |*cell| {
@@ -412,17 +396,13 @@ fn formatPage(
             // If we have a zero value, then we accumulate a counter. We
             // only want to turn zero values into spaces if we have a non-zero
             // char sometime later.
-            blank: {
-                // If we're emitting styled output (not plaintext) and
-                // the cell has some kind of styling or is not empty
-                // then this isn't blank.
-                if (!cell.isEmpty() or cell.hasStyling()) break :blank;
-
-                // Cells with no text are blank
-                if (!cell.hasText()) {
-                    blank_cells += 1;
-                    continue;
-                }
+            // If we're emitting styled output (not plaintext) and
+            // the cell has some kind of styling or is not empty
+            // then this isn't blank.
+            // Cells with no text are blank
+            if (cell.isEmpty() and !cell.hasStyling()) {
+                blank_cells += 1;
+                continue;
             }
 
             // This cell is not blank. If we have accumulated blank cells
@@ -530,7 +510,7 @@ fn formatPage(
     // Close any open hyperlink for HTML output
     // if (current_hyperlink_id != null) try formatHyperlinkClose(writer);
 
-    return .{ .rows = blank_rows, .cells = blank_cells };
+    return .{ .cells = blank_cells };
 }
 
 fn writeCell(
