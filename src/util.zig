@@ -387,8 +387,7 @@ pub fn serializeTerminalState(alloc: std.mem.Allocator, term: *ghostty_vt.Termin
     //     term.modes.set(.synchronized_output, false);
     // }
 
-    var term_formatter = formatter.TerminalFormatter.init(term);
-    try term_formatter.format(&allocating.writer);
+    try formatter.formatTerminal(term, &allocating.writer);
 
     // // Restore the original synchronized_output mode before returning
     // if (had_synchronized_output) {
