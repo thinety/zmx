@@ -678,6 +678,7 @@ pub const Handler = struct {
     }
 
     fn apcEnd(self: *Handler) void {
+        const io = self.terminal.io();
         const alloc = self.terminal.gpa();
         var cmd = self.apc_handler.end() orelse return;
         defer cmd.deinit(alloc);
@@ -685,6 +686,7 @@ pub const Handler = struct {
         switch (cmd) {
             .kitty => |*kitty_cmd| {
                 if (self.terminal.kittyGraphics(
+                    io,
                     alloc,
                     kitty_cmd,
                 )) |resp| {

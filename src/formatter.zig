@@ -309,15 +309,6 @@ fn formatPage(
         return .{ .cells = blank_cells };
     }
 
-    {
-        // OSC 10 sets foreground color, OSC 11 sets background color
-        var buf: [512]u8 = undefined;
-        var stream = std.io.fixedBufferStream(&buf);
-
-        const header = stream.getWritten();
-        try writer.writeAll(header);
-    }
-
     // Our style for non-plain formats
     var style: Style = .{};
 
@@ -527,7 +518,7 @@ fn writeCell(
         return;
     }
 
-    try writeCodepoint(writer, cell.content.codepoint);
+    try writeCodepoint(writer, cell.content.codepoint.data);
     if (comptime tag == .codepoint_grapheme) {
         for (page.lookupGrapheme(cell).?) |cp| {
             try writeCodepoint(writer, cp);
@@ -559,7 +550,7 @@ fn cellStyle(
 
         .bg_color_palette => .{
             .bg_color = .{
-                .palette = cell.content.color_palette,
+                .palette = cell.content.color_palette.data,
             },
         },
 
