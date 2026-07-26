@@ -39,22 +39,6 @@ pub fn formatTerminal(
         }
     }
 
-    // Emit tabstop positions
-    {
-        // Clear all tabs (CSI 3 g)
-        try writer.print("\x1b[3g", .{});
-
-        // Set each configured tabstop by moving cursor and using HTS
-        for (0..terminal.cols) |col| {
-            if (terminal.tabstops.get(col)) {
-                // Move cursor to the column (1-indexed)
-                try writer.print("\x1b[{d}G", .{col + 1});
-                // Set tab (HTS)
-                try writer.print("\x1bH", .{});
-            }
-        }
-    }
-
     try formatScreen(terminal.screens.active, writer);
 
     // Extra terminal state to emit after the screen contents so that
@@ -312,7 +296,7 @@ fn formatPage(
     // Our style for non-plain formats
     var style: Style = .{};
 
-    // TODO: hyperlink
+    // TODO(thiago): hyperlink
     // Track hyperlink state for HTML output. We need to close </a> tags
     // when the hyperlink changes or ends.
     // var current_hyperlink_id: ?hyperlink.Id = null;
@@ -434,7 +418,7 @@ fn formatPage(
                 );
             }
 
-            // TODO: hyperlink
+            // TODO(thiago): hyperlink
             // // Hyperlink state
             // hyperlink: {
             //     // We currently only emit hyperlinks for HTML. In the
@@ -497,7 +481,7 @@ fn formatPage(
     // If the style is non-default, we need to close our style tag.
     if (!style.default()) try formatStyleClose(writer);
 
-    // TODO: hyperlink
+    // TODO(thiago): hyperlink
     // Close any open hyperlink for HTML output
     // if (current_hyperlink_id != null) try formatHyperlinkClose(writer);
 

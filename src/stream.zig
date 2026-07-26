@@ -330,6 +330,7 @@ pub const Handler = struct {
             // Effect-based handlers
             .bell => {},
             .device_attributes => {
+                // TODO(thiago): do not forwawrd this
                 self.reportDeviceAttributes(value);
             },
             .device_status => {
@@ -818,12 +819,11 @@ pub const Handler = struct {
             },
 
             .csi_14_t, .csi_16_t, .csi_18_t => {
-                // TODO: get real size from pty (ideally kept in memory)
                 const s: size_report.Size = .{
-                    .rows = 0,
-                    .columns = 0,
-                    .cell_width = 0,
-                    .cell_height = 0,
+                    .rows = self.terminal.rows,
+                    .columns = self.terminal.cols,
+                    .cell_width = self.terminal.width_px / self.terminal.cols,
+                    .cell_height = self.terminal.height_px / self.terminal.rows,
                 };
                 const report_style: size_report.Style = switch (style) {
                     .csi_14_t => .csi_14_t,
@@ -895,7 +895,7 @@ pub const Handler = struct {
         self.writePty(resp);
     }
 
-    // TODO: forward this to the real pty
+    // TODO(thiago): forward this to the real pty
     inline fn writePty(self: *Handler, data: [:0]const u8) void {
         _ = self;
         _ = data;
