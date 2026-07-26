@@ -39,7 +39,7 @@ pub fn formatTerminal(
         }
     }
 
-    try formatScreen(terminal.screens.active, writer);
+    try formatScreen(terminal, terminal.screens.active, writer);
 
     // Extra terminal state to emit after the screen contents so that
     // it doesn't impact the emitted contents.
@@ -78,6 +78,7 @@ pub fn formatTerminal(
 }
 
 fn formatScreen(
+    terminal: *const Terminal,
     screen: *const Screen,
     writer: *std.Io.Writer,
 ) std.Io.Writer.Error!void {
@@ -184,6 +185,18 @@ fn formatScreen(
         const cursor = &screen.cursor;
         // CUP is 1-indexed
         try writer.print("\x1b[{d};{d}H", .{ cursor.y + 1, cursor.x + 1 });
+
+        const blink = terminal.modes.get(.cursor_blinking);
+        const style: u8 = switch (cursor.cursor_style) {
+            .block => if (blink) 1 else 2,
+            .underline => if (blink) 3 else 4,
+            .bar => if (blink) 5 else 6,
+
+            // Below here, the cursor styles aren't represented by
+            // DECSCUSR so we map it to some other style.
+            .block_hollow => if (blink) 1 else 2,
+        };
+        try writer.print("\x1b[{d} q", .{style});
     }
 }
 
